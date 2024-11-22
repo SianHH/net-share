@@ -52,6 +52,8 @@ func (*service) Create(params CreateRequest) (Item, error) {
 		DomainPrefix: domainPrefix,
 		ClientCode:   params.ClientCode,
 		RateLimiter:  rateLimiter,
+		AuthUser:     utils.RandStr(12, utils.AllDict),
+		AuthPwd:      utils.RandStr(12, utils.AllDict),
 	}
 	if err := global.ClientHostFs.Create(host); err != nil {
 		global.ClientHostDomainFs.Delete(domainPrefix)
@@ -61,6 +63,7 @@ func (*service) Create(params CreateRequest) (Item, error) {
 
 	registry.ClientRegistry.Get(host.ClientCode).RunHost(host.Code, false)
 	registry.UpdateIngress()
+	registry.UpdateAuthers()
 	return Item{
 		Code:           host.Code,
 		Name:           host.Name,

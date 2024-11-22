@@ -1,4 +1,4 @@
-package client_forward
+package client_tunnel
 
 import (
 	"errors"
@@ -8,7 +8,6 @@ import (
 	"net-share/server/constant"
 	"net-share/server/global"
 	"net-share/server/model"
-	"net-share/server/service/ports"
 	"net-share/server/service/registry"
 	"time"
 )
@@ -36,11 +35,7 @@ func (*service) Create(params CreateRequest) (Item, error) {
 
 	rateLimiter := params.RateLimiter
 
-	port, err := ports.PullPort()
-	if err != nil {
-		return Item{}, err
-	}
-	forward := model.ClientForward{
+	tunnel := model.ClientTunnel{
 		Base: model.Base{
 			Code:      uuid.NewString(),
 			CreatedAt: time.Now(),
@@ -48,33 +43,31 @@ func (*service) Create(params CreateRequest) (Item, error) {
 		},
 		Name:        params.Name,
 		Target:      params.TargetIp + ":" + params.TargetPort,
-		Port:        port,
-		Nodelay:     params.Nodelay,
 		ClientCode:  params.ClientCode,
+		Key:         uuid.NewString(),
 		RateLimiter: rateLimiter,
 		AuthUser:    utils.RandStr(12, utils.AllDict),
 		AuthPwd:     utils.RandStr(12, utils.AllDict),
 	}
-	if err := global.ClientForwardFs.Create(forward); err != nil {
-		ports.PushPort(port)
-		global.Logger.Error("新增ClientForward失败", zap.Error(err))
+	if err := global.ClientTunnelFs.Create(tunnel); err != nil {
+		global.Logger.Error("新增ClientTunnel失败", zap.Error(err))
 		return Item{}, err
 	}
-	registry.ClientRegistry.Get(forward.ClientCode).RunForward(forward.Code, false)
+	registry.ClientRegistry.Get(tunnel.ClientCode).RunTunnel(tunnel.Code, false)
+	registry.UpdateIngress()
 	registry.UpdateAuthers()
 
-	ip, port := forward.GetTargetIpAndPort()
+	ip, port := tunnel.GetTargetIpAndPort()
 	return Item{
-		Code:           forward.Code,
-		Name:           forward.Name,
+		Code:           tunnel.Code,
+		Name:           tunnel.Name,
 		TargetIp:       ip,
 		TargetPort:     port,
-		Port:           forward.Port,
+		VKey:           tunnel.Key,
 		Ip:             global.App.Ip,
-		ClientCode:     forward.ClientCode,
+		ClientCode:     tunnel.ClientCode,
 		ClientName:     client.Name,
-		ClientIsOnline: utils.TrinaryOperation(global.Cache.GetString(constant.CacheClientHeartbeatKey+forward.ClientCode) == "online", 1, 2),
-		Nodelay:        forward.Nodelay,
-		RateLimiter:    forward.RateLimiter,
+		ClientIsOnline: utils.TrinaryOperation(global.Cache.GetString(constant.CacheClientHeartbeatKey+tunnel.ClientCode) == "online", 1, 2),
+		RateLimiter:    tunnel.RateLimiter,
 	}, nil
 }

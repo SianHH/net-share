@@ -279,158 +279,146 @@ func (c *V2Client) DelForward(code string) {
 }
 
 func (c *V2Client) RunTunnel(code string, force bool) {
-	//if !c.checkExec() {
-	//	return
-	//}
-	//type RunTunnelRequest struct {
-	//	Code      string               `json:"code"`
-	//	UpdatedAt int64                `json:"updatedAt"`
-	//	Service   config.ServiceConfig `json:"service,omitempty"`
-	//	Chain     config.ChainConfig   `json:"chain,omitempty"`
-	//	Limiter   config.LimiterConfig `json:"limiter,omitempty"`
-	//}
-	//var tunnel model.ClientTunnel
-	//if global.DB.GetDB().Preload("Client").Preload("Node").
-	//	Where("code = ?", code).
-	//	Where("err_msg = ? or err_msg is null", "").
-	//	First(&tunnel).RowsAffected == 0 {
-	//	return
-	//}
-	//uid := uuid.NewString()
-	//updatedAt := utils.TrinaryOperation(tunnel.UpdatedAt.After(tunnel.Node.UpdatedAt), tunnel.UpdatedAt.UnixNano(), tunnel.Node.UpdatedAt.UnixNano())
-	//if force {
-	//	updatedAt = time.Now().UnixNano()
-	//}
-	//
-	//metadata := map[string]any{
-	//	"tunnel.id": tunnel.Key,
-	//}
+	if !c.checkExec() {
+		return
+	}
+	type RunTunnelRequest struct {
+		Code      string               `json:"code"`
+		UpdatedAt int64                `json:"updatedAt"`
+		Service   config.ServiceConfig `json:"service,omitempty"`
+		Chain     config.ChainConfig   `json:"chain,omitempty"`
+		Limiter   config.LimiterConfig `json:"limiter,omitempty"`
+	}
+	tunnel, err := global.ClientTunnelFs.Query(code)
+	if err != nil {
+		return
+	}
+	uid := uuid.NewString()
+	metadata := map[string]any{
+		"tunnel.id": tunnel.Key,
+	}
 	//for k, v := range constant.TunnelClientConfigMap {
 	//	metadata[k] = v
 	//}
-	//
-	//{
-	//	tcpCode := tunnel.Code
-	//	msgBody := ws_msg_data.NewMessageBody("runTunnel", uid, true, RunTunnelRequest{
-	//		Code:      tcpCode,
-	//		UpdatedAt: updatedAt,
-	//		Service: config.ServiceConfig{
-	//			Name: tcpCode,
-	//			Addr: ":0",
-	//			Handler: &config.HandlerConfig{
-	//				Type: "rtcp",
-	//			},
-	//			Listener: &config.ListenerConfig{
-	//				Type:  "rtcp",
-	//				Chain: tcpCode,
-	//			},
-	//			Forwarder: &config.ForwarderConfig{
-	//				Nodes: []*config.ForwardNodeConfig{
-	//					{
-	//						Name: tunnel.Target,
-	//						Addr: tunnel.Target,
-	//					},
-	//				},
-	//			},
-	//			Limiter: utils.TrinaryOperation(tunnel.RateLimiter == 0, "", tunnel.Code),
-	//		},
-	//		Chain: config.ChainConfig{
-	//			Name: tcpCode,
-	//			Hops: []*config.HopConfig{
-	//				{
-	//					Nodes: []*config.NodeConfig{
-	//						{
-	//							Addr: tunnel.Node.Server,
-	//							Connector: &config.ConnectorConfig{
-	//								Type:     tunnel.Node.Handler,
-	//								Metadata: metadata,
-	//							},
-	//							Dialer: &config.DialerConfig{
-	//								Type: tunnel.Node.Licence,
-	//							},
-	//						},
-	//					},
-	//				},
-	//			},
-	//		},
-	//		Limiter: config.LimiterConfig{
-	//			Name:   tcpCode,
-	//			Limits: tunnel.GetLimits(),
-	//		},
-	//	})
-	//	command.Service.Create(tunnel.ClientCode, uid, msgBody, "私有隧道-开启服务")
-	//	c.WriterMessage(msgBody)
-	//}
-	//
-	//{
-	//	udpCode := "udp_" + tunnel.Code
-	//	msgBody := ws_msg_data.NewMessageBody("runTunnel", uid, true, RunTunnelRequest{
-	//		Code:      udpCode,
-	//		UpdatedAt: updatedAt,
-	//		Service: config.ServiceConfig{
-	//			Name: udpCode,
-	//			Addr: ":0",
-	//			Handler: &config.HandlerConfig{
-	//				Type: "rudp",
-	//			},
-	//			Listener: &config.ListenerConfig{
-	//				Type:  "rudp",
-	//				Chain: udpCode,
-	//			},
-	//			Forwarder: &config.ForwarderConfig{
-	//				Nodes: []*config.ForwardNodeConfig{
-	//					{
-	//						Name: tunnel.Target,
-	//						Addr: tunnel.Target,
-	//					},
-	//				},
-	//			},
-	//			Limiter: utils.TrinaryOperation(tunnel.RateLimiter == 0, "", tunnel.Code),
-	//		},
-	//		Chain: config.ChainConfig{
-	//			Name: udpCode,
-	//			Hops: []*config.HopConfig{
-	//				{
-	//					Nodes: []*config.NodeConfig{
-	//						{
-	//							Addr: tunnel.Node.Server,
-	//							Connector: &config.ConnectorConfig{
-	//								Type:     tunnel.Node.Handler,
-	//								Metadata: metadata,
-	//							},
-	//							Dialer: &config.DialerConfig{
-	//								Type: tunnel.Node.Licence,
-	//							},
-	//						},
-	//					},
-	//				},
-	//			},
-	//		},
-	//		Limiter: config.LimiterConfig{
-	//			Name:   udpCode,
-	//			Limits: tunnel.GetLimits(),
-	//		},
-	//	})
-	//	command.Service.Create(tunnel.ClientCode, uid, msgBody, "私有隧道-开启服务UDP")
-	//	c.WriterMessage(msgBody)
-	//}
+
+	{
+		tcpCode := tunnel.Code
+		msgBody := ws_msg_data.NewMessageBody("runTunnel", uid, true, RunTunnelRequest{
+			Code:      tcpCode,
+			UpdatedAt: time.Now().UnixNano(),
+			Service: config.ServiceConfig{
+				Name: tcpCode,
+				Addr: ":0",
+				Handler: &config.HandlerConfig{
+					Type: "rtcp",
+				},
+				Listener: &config.ListenerConfig{
+					Type:  "rtcp",
+					Chain: tcpCode,
+				},
+				Forwarder: &config.ForwarderConfig{
+					Nodes: []*config.ForwardNodeConfig{
+						{
+							Name: tunnel.Target,
+							Addr: tunnel.Target,
+						},
+					},
+				},
+				Limiter: utils.TrinaryOperation(tunnel.RateLimiter == 0, "", tunnel.Code),
+			},
+			Chain: config.ChainConfig{
+				Name: tcpCode,
+				Hops: []*config.HopConfig{
+					{
+						Nodes: []*config.NodeConfig{
+							{
+								Addr: global.App.Ip + ":" + global.App.HostPort,
+								Connector: &config.ConnectorConfig{
+									Type:     "tunnel",
+									Metadata: metadata,
+								},
+								Dialer: &config.DialerConfig{
+									Type: "tls",
+								},
+							},
+						},
+					},
+				},
+			},
+			Limiter: config.LimiterConfig{
+				Name:   tcpCode,
+				Limits: tunnel.GetLimits(),
+			},
+		})
+		c.WriterMessage(msgBody)
+	}
+
+	{
+		udpCode := "udp_" + tunnel.Code
+		msgBody := ws_msg_data.NewMessageBody("runTunnel", uid, true, RunTunnelRequest{
+			Code:      udpCode,
+			UpdatedAt: time.Now().UnixNano(),
+			Service: config.ServiceConfig{
+				Name: udpCode,
+				Addr: ":0",
+				Handler: &config.HandlerConfig{
+					Type: "rudp",
+				},
+				Listener: &config.ListenerConfig{
+					Type:  "rudp",
+					Chain: udpCode,
+				},
+				Forwarder: &config.ForwarderConfig{
+					Nodes: []*config.ForwardNodeConfig{
+						{
+							Name: tunnel.Target,
+							Addr: tunnel.Target,
+						},
+					},
+				},
+				Limiter: utils.TrinaryOperation(tunnel.RateLimiter == 0, "", tunnel.Code),
+			},
+			Chain: config.ChainConfig{
+				Name: udpCode,
+				Hops: []*config.HopConfig{
+					{
+						Nodes: []*config.NodeConfig{
+							{
+								Addr: global.App.Ip + ":" + global.App.HostPort,
+								Connector: &config.ConnectorConfig{
+									Type:     "tunnel",
+									Metadata: metadata,
+								},
+								Dialer: &config.DialerConfig{
+									Type: "tls",
+								},
+							},
+						},
+					},
+				},
+			},
+			Limiter: config.LimiterConfig{
+				Name:   udpCode,
+				Limits: tunnel.GetLimits(),
+			},
+		})
+		c.WriterMessage(msgBody)
+	}
 }
 
 func (c *V2Client) DelTunnel(code string) {
-	//if !c.checkExec() {
-	//	return
-	//}
-	//uid := uuid.NewString()
-	//{
-	//	msgBody := ws_msg_data.NewMessageBody("delTunnel", uid, true, map[string]string{"code": code})
-	//	command.Service.Create(c.code, uid, msgBody, "私有隧道-关闭服务")
-	//	c.WriterMessage(msgBody)
-	//}
-	//{
-	//	msgBody := ws_msg_data.NewMessageBody("delTunnel", uid, true, map[string]string{"code": "udp_" + code})
-	//	command.Service.Create(c.code, uid, msgBody, "私有隧道-关闭服务UDP")
-	//	c.WriterMessage(msgBody)
-	//}
+	if !c.checkExec() {
+		return
+	}
+	uid := uuid.NewString()
+	{
+		msgBody := ws_msg_data.NewMessageBody("delTunnel", uid, true, map[string]string{"code": code})
+		c.WriterMessage(msgBody)
+	}
+	{
+		msgBody := ws_msg_data.NewMessageBody("delTunnel", uid, true, map[string]string{"code": "udp_" + code})
+		c.WriterMessage(msgBody)
+	}
 }
 
 func (c *V2Client) checkExec() bool {

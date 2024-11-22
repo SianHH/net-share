@@ -4,6 +4,7 @@ import (
 	"github.com/go-gost/core/logger"
 	"github.com/go-gost/x/config"
 	"github.com/go-gost/x/config/parsing"
+	"github.com/go-gost/x/config/parsing/auth"
 	"github.com/go-gost/x/config/parsing/ingress"
 	xservice "github.com/go-gost/x/config/parsing/service"
 	xlogger "github.com/go-gost/x/logger"
@@ -25,7 +26,38 @@ func init() {
 		runHostServer()
 		runForwardServer()
 		UpdateIngress()
+		UpdateAuthers()
 	})
+}
+
+func UpdateAuthers() {
+	var authers []*config.AuthConfig
+	for _, host := range global.ClientHostFs.QueryAll() {
+		authers = append(authers, &config.AuthConfig{
+			Username: host.AuthUser,
+			Password: host.AuthPwd,
+		})
+	}
+	for _, forward := range global.ClientForwardFs.QueryAll() {
+		authers = append(authers, &config.AuthConfig{
+			Username: forward.AuthUser,
+			Password: forward.AuthPwd,
+		})
+	}
+
+	for _, tunnel := range global.ClientTunnelFs.QueryAll() {
+		authers = append(authers, &config.AuthConfig{
+			Username: tunnel.AuthUser,
+			Password: tunnel.AuthPwd,
+		})
+	}
+
+	auther := auth.ParseAuther(&config.AutherConfig{
+		Name:  "authers",
+		Auths: authers,
+	})
+	registry.AutherRegistry().Unregister("authers")
+	_ = registry.AutherRegistry().Register("authers", auther)
 }
 
 func UpdateIngress() {
@@ -34,6 +66,13 @@ func UpdateIngress() {
 		rules = append(rules, &config.IngressRuleConfig{
 			Hostname: host.DomainPrefix + "." + global.App.Domain,
 			Endpoint: host.Code,
+		})
+	}
+
+	for _, tunnel := range global.ClientTunnelFs.QueryAll() {
+		rules = append(rules, &config.IngressRuleConfig{
+			Hostname: tunnel.DomainPrefix + "." + global.App.Domain,
+			Endpoint: "$" + tunnel.Code,
 		})
 	}
 
@@ -60,6 +99,7 @@ func runHostServer() {
 				"ingress":    "ingress",
 				"sniffing":   true,
 			},
+			Auther: "authers",
 		},
 		Listener: &config.ListenerConfig{
 			Type: "tls",
@@ -94,6 +134,7 @@ func runForwardServer() {
 				"nodelay": true,
 				"bind":    true,
 			},
+			Auther: "authers",
 		},
 		Listener: &config.ListenerConfig{
 			Type: "tls",

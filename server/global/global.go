@@ -17,6 +17,7 @@ var Logger *logger.Logger
 var ClientFs *file_storage.FileStorage[model.Client]
 var ClientForwardFs *file_storage.FileStorage[model.ClientForward]
 var ClientHostFs *file_storage.FileStorage[model.ClientHost]
+var ClientTunnelFs *file_storage.FileStorage[model.ClientTunnel]
 var ClientHostDomainFs *file_storage.FileStorage[model.Base]
 
 var Cache *cache.Cache

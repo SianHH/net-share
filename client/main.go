@@ -2,7 +2,10 @@ package main
 
 import (
 	"crypto/tls"
+	"net-share/client/v_ws"
 	"net-share/client/ws"
+	"strconv"
+	"strings"
 
 	// Register connectors
 	_ "github.com/go-gost/x/connector/direct"
@@ -128,11 +131,43 @@ func init() {
 	parsing.BuildDefaultTLSConfig(nil)
 }
 
+type VisitorTunnel struct {
+	Key       string
+	LocalPort string
+}
+
+// 解析所有隧道参数
+func ParseVisitor() (list []VisitorTunnel) {
+	for _, item := range os.Args[1:] {
+		if item == "-v" || item == "-s" || item == "-key" {
+			continue
+		}
+		replace := strings.ReplaceAll(item, " ", "")
+		split := strings.Split(replace, ":")
+		if len(split) != 2 {
+			continue
+		}
+		localPort, err := strconv.ParseInt(split[1], 10, 64)
+		if err != nil {
+			continue
+		}
+		if localPort > 0 && localPort < 65535 {
+			list = append(list, VisitorTunnel{
+				Key:       split[0],
+				LocalPort: split[1],
+			})
+		}
+	}
+	return list
+}
+
 func main() {
 	var server string
 	var key string
+	var visitor bool
 	flag.StringVar(&server, "s", "", "websocket url,example: wss://gost.sian.one")
 	flag.StringVar(&key, "key", "", "client key")
+	flag.BoolVar(&visitor, "v", false, "is visitor")
 	flag.Parse()
 	if server == "" {
 		fmt.Println("pleas enter the websocket url")
@@ -143,24 +178,49 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Println("WebSocketUrl:", server+"/api/v1/client/ws")
+	fmt.Println("VisitorUrl:", server+"/api/v1/client/tunnel/ws")
 	fmt.Println("ClientKey:", key)
-	for {
-		socket, _, err := gws.NewClient(ws.NewService("ws", key), &gws.ClientOption{
-			Addr:          server + "/api/v1/client/ws",
-			TlsConfig:     &tls.Config{InsecureSkipVerify: true},
-			RequestHeader: http.Header{"key": []string{key}},
-			PermessageDeflate: gws.PermessageDeflate{
-				Enabled:               true,
-				ServerContextTakeover: true,
-				ClientContextTakeover: true,
-			},
-		})
-		if err != nil {
-			fmt.Println("conn fail,please wait 5 second,retry conn", err)
-			time.Sleep(time.Second * 5)
-			continue
+
+	if visitor {
+		for { // 访问端模式
+			socket, _, err := gws.NewClient(v_ws.NewService("ws"), &gws.ClientOption{
+				Addr:          server + "/api/v1/client/tunnel/ws",
+				TlsConfig:     &tls.Config{InsecureSkipVerify: true},
+				RequestHeader: http.Header{"key": []string{key}},
+				PermessageDeflate: gws.PermessageDeflate{
+					Enabled:               true,
+					ServerContextTakeover: true,
+					ClientContextTakeover: true,
+				},
+			})
+			if err != nil {
+				fmt.Println("conn fail,please wait 5 second,retry conn", err)
+				time.Sleep(time.Second * 5)
+				continue
+			}
+			_ = socket.WritePing(nil)
+			socket.ReadLoop()
 		}
-		_ = socket.WritePing(nil)
-		socket.ReadLoop()
+	} else {
+		// 客户端模式
+		for {
+			socket, _, err := gws.NewClient(ws.NewService("ws", key), &gws.ClientOption{
+				Addr:          server + "/api/v1/client/ws",
+				TlsConfig:     &tls.Config{InsecureSkipVerify: true},
+				RequestHeader: http.Header{"key": []string{key}},
+				PermessageDeflate: gws.PermessageDeflate{
+					Enabled:               true,
+					ServerContextTakeover: true,
+					ClientContextTakeover: true,
+				},
+			})
+			if err != nil {
+				fmt.Println("conn fail,please wait 5 second,retry conn", err)
+				time.Sleep(time.Second * 5)
+				continue
+			}
+			_ = socket.WritePing(nil)
+			socket.ReadLoop()
+		}
 	}
 }

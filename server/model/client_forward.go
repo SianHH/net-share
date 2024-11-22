@@ -13,6 +13,8 @@ type ClientForward struct {
 	Nodelay     int    `json:"nodelay"`
 	ClientCode  string `json:"clientCode"`
 	RateLimiter int    `json:"rateLimiter"`
+	AuthUser    string `json:"authUser"`
+	AuthPwd     string `json:"authPwd"`
 }
 
 func (ClientForward) TableName() string {

@@ -58,7 +58,10 @@ func (*service) Update(params UpdateRequest) (Item, error) {
 	host.Target = params.TargetIp + ":" + params.TargetPort
 	host.DomainPrefix = params.DomainPrefix
 	host.RateLimiter = rateLimiter
+	host.AuthUser = utils.RandStr(12, utils.AllDict)
+	host.AuthPwd = utils.RandStr(12, utils.AllDict)
 	host.UpdatedAt = time.Now()
+
 	if err := global.ClientHostFs.Update(host); err != nil {
 		global.Logger.Error("修改ClientHost失败", zap.Error(err))
 		_ = global.ClientHostDomainFs.Delete(params.DomainPrefix)
@@ -67,6 +70,7 @@ func (*service) Update(params UpdateRequest) (Item, error) {
 	_ = global.ClientHostDomainFs.Delete(oldDomainPrefix)
 	registry.ClientRegistry.Get(host.ClientCode).RunHost(host.Code, false)
 	registry.UpdateIngress()
+	registry.UpdateAuthers()
 
 	ip, port := host.GetTargetIpAndPort()
 	return Item{

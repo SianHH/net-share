@@ -28,6 +28,12 @@ func InitRepo() {
 		os.Exit(1)
 	}
 
+	global.ClientTunnelFs, err = file_storage.NewFileStorage(model.ClientTunnel{}, "data/client_tunnel.json", 10)
+	if err != nil {
+		global.Logger.Error("ClientTunnelFs初始化失败", zap.Error(err))
+		os.Exit(1)
+	}
+
 	global.ClientHostDomainFs, err = file_storage.NewFileStorage(model.Base{}, "data/client_host_domain.json", 10)
 	if err != nil {
 		global.Logger.Error("ClientHostDomainFs初始化失败", zap.Error(err))

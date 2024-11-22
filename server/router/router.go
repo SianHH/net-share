@@ -9,4 +9,5 @@ func SetRouter(engine *gin.Engine) {
 	setClientRouter(engine)
 	setClientHostRouter(engine)
 	setClientForwardRouter(engine)
+	setClientTunnelRouter(engine)
 }

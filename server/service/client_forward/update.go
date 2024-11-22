@@ -41,11 +41,14 @@ func (*service) Update(params UpdateRequest) (Item, error) {
 	forward.Nodelay = params.Nodelay
 	forward.RateLimiter = rateLimiter
 	forward.UpdatedAt = time.Now()
+	forward.AuthUser = utils.RandStr(12, utils.AllDict)
+	forward.AuthPwd = utils.RandStr(12, utils.AllDict)
 	if err := global.ClientForwardFs.Update(forward); err != nil {
 		global.Logger.Error("修改ClientForward失败", zap.Error(err))
 		return Item{}, errors.New("修改失败")
 	}
 	registry.ClientRegistry.Get(forward.ClientCode).RunForward(forward.Code, false)
+	registry.UpdateAuthers()
 	ip, port := forward.GetTargetIpAndPort()
 	return Item{
 		Code:           forward.Code,
