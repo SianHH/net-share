@@ -1,0 +1,13 @@
+.idea
+*_test.go
+/data22.db
+/data.db
+/cache.db
+/cache.db.lock
+*.log
+/tmp
+/*.yaml
+/*.txt
+/dist
+!.goreleaser.yaml
+/data/
